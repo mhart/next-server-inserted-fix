@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# A fix for Next.js inserted html streaming
 
-## Getting Started
+Based on [the Next.js benchmark from t3dotgg](https://github.com/t3dotgg/cf-vs-vercel-bench/tree/main/next-bench) (with the bulk of the "math" CPU stuff removed, leaving mostly just rendering work).
 
-First, run the development server:
+This illustrates the impact of fixing [the logic when rendering the inserted html stream](https://github.com/vercel/next.js/blob/498349c375e2602f526f64e8366992066cfa872c/packages/next/src/server/app-render/make-get-server-inserted-html.tsx#L80-L98).
+
+## To run before the fix
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm build
+NODE_ENV=production node .next/standalone/server.js
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Testing the fix
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+patch -p0 < diff.patch
+NODE_ENV=production node .next/standalone/server.js
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+(run the patch command after building – run it again if you want to reverse the patch)
 
-## Learn More
+## Results
 
-To learn more about Next.js, take a look at the following resources:
+Default wrk settings (2 threads, 10 connections)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+wrk -d30 http://localhost:3000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Avg before patch: 1.94s
+- Avg after patch: 1.65s (1.18x faster)
 
-## Deploy on Vercel
+With `node --single-threaded` to simulate a single core (like on Lambda) and then running a single request at a time (1 thread, 1 connection):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+wrk -c1 -t1 -d30 http://localhost:3000
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Avg Before: 215ms
+- Avg After: 183ms (1.17x faster)
+
+### Other platforms
+
+Running a few benchmarks, I see:
+
+- Deno: 1.38x faster
+- workerd: 1.24x faster
+- Bun: 1.15x faster
