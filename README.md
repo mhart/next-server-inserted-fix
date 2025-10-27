@@ -4,6 +4,8 @@ Based on [the Next.js benchmark from t3dotgg](https://github.com/t3dotgg/cf-vs-v
 
 This illustrates the impact of fixing [the logic when rendering the inserted html stream](https://github.com/vercel/next.js/blob/498349c375e2602f526f64e8366992066cfa872c/packages/next/src/server/app-render/make-get-server-inserted-html.tsx#L80-L98).
 
+[A PR has been created against Next.js](https://github.com/vercel/next.js/pull/85394) with (essentially) this fix.
+
 ## To run before the fix
 
 ```bash
